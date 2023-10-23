@@ -1,0 +1,109 @@
+---
+title: "R Markdown"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+
+```{r}
+library(class)
+library(dplyr)
+library(caret)
+
+library(tinytex)
+data <- read.csv("UniversalBank.csv")
+#Elimination the ID AND ZIP CODE Columns
+data$ID<-NULL
+data$ZIP.Code<-NULL
+View(data)
+#converting to factor variable
+data$Personal.Loan=as.factor(data$Personal.Loan)
+#Checking if there is any null variables
+head(is.na(data))
+
+##2
+
+#Transforming Education to character
+data$Education=as.character(data$Education)
+#Creating dummy variables
+Education_1 <- ifelse(data$Education==1 ,1,0)
+Education_2 <- ifelse(data$Education==2 ,1,0)
+Education_3 <- ifelse(data$Education==3 ,1,0)
+data_2<-data.frame(Age=data$Age,Experience=data$Experience,Income=data$Income,Family=data$Family,CCAvg=data$CCAvg, Education_1=Education_1,Education_2=Education_2,Education_3=Education_3,Personal.Loan=data$Personal.Loan,Mortgage=data$Mortgage,Securities.Account=data$Securities.Account,CD.Account=data$CD.Account,Online=data$Online,CreditCard=data$CreditCard)
+#defining testdata
+test_1<-data.frame(Age=40,Experience=10,Income=84,Family=2,CCAvg=2,Education_1=0,Education_2=1,Education_3=0,Mortgage=0,Securities.Account=0,CD.Account=0,Online=1,CreditCard=1)
+#splitting data to 60:40
+set.seed(250)
+temp<- createDataPartition(data_2$Personal.Loan,p=.6,list=FALSE,times=1)
+train_1 <- data_2[temp, ]
+valid_1<- data_2[-temp, ]
+#Normalization
+Norm_Model=preProcess(test_1[,-(6:9)],method=c("center","scale"))
+## Warning in preProcess.default(test_1[, -(6:9)], method = c("center", "scale")):
+## Std. deviations could not be computed for: Age, Experience, Income, Family,
+## CCAvg, Securities.Account, CD.Account, Online, CreditCard
+train_1_Norm =predict(Norm_Model,train_1)
+valid_1_Norm =predict(Norm_Model,valid_1)
+test_1_Norm =predict(Norm_Model,test_1)
+View(train_1_Norm)
+#running knn algorithm
+predict_train<-train_1_Norm[,-9]
+train_sample<-train_1_Norm[,9]
+predict_valid<-valid_1_Norm[,-9]
+2
+valid_sample<-valid_1_Norm[,9]
+predict<-knn(predict_train, test_1_Norm, cl=train_sample,k=1)
+predict
+
+##3
+
+
+#The loan offer has been denied by the customer. It is determined when the k value=0
+#Finding the best value of k
+set.seed(250)
+grid_1<-expand.grid(k=seq(1:30))
+model_1<-train(Personal.Loan~.,data=train_1_Norm,method="knn",tuneGrid=grid_1)
+model_1
+
+#confusion matrix
+predicted<-predict(model_1,valid_1_Norm[-9])
+confusionMatrix(predicted,valid_sample)
+
+
+##4
+
+
+#5 data is splitted to 50:30:20 ratio again
+set.seed(400)
+label_1<-createDataPartition(data_2$Personal.Loan,p=0.5,list=FALSE)
+4
+label_2<-createDataPartition(data_2$Personal.Loan,p=0.3,list=FALSE)
+label_3<-createDataPartition(data_2$Personal.Loan,p=0.2,list=FALSE)
+train_2<-data_2[label_1,]
+valid_2<-data_2[label_2,]
+test_2<-data_2[label_3,]
+#normalizing new dataset
+normal_1<-preProcess(train_1[,-(6:9)],method=c("center","scale"))
+normalized_train_1 <- predict(normal_1,train_1)
+normalized_valid_1<-predict(normal_1,valid_1)
+normalized_test_1<-predict(normal_1,test_1)
+#running knn for train,validation and test data
+predict_new_train= normalized_train_1[,-9]
+predict_new_train_1= normalized_train_1[,9]
+predict_new_valid=normalized_valid_1[,-9]
+predict_new_valid_1=normalized_valid_1[,9]
+predict_new_test=normalized_test_1[,-9]
+predict_new_test_1=normalized_test_1[,9]
+View(predict_new_test_1)
+value_k <- 4  # Replace 5 with your desired value
+Predict_train_new <- knn(predict_new_train, predict_new_train, cl = predict_new_train_1, k = value_k)
+Predict_train_new<-knn(predict_new_train,predict_new_train,cl=predict_new_train_1,k=value_k)
+Predict_valid_new<-knn(predict_new_train,predict_new_valid,cl=predict_new_train_1,k=value_k)
+#training ,validation and test data confusion matrix
+confusionMatrix(Predict_train_new,predict_new_train_1)
+
+
+```
+
